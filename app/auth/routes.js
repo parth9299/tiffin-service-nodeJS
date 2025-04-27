@@ -6,6 +6,6 @@ exports.routes = (router) => {
     router.post('/adminForgot',adminForgot);
     router.post('/adminReset',adminReset);
     router.post('/adminRegister',adminRegister);
-    router.get('/adminList',adminList);
+    router.post('/adminList',adminList);
     router.post('/adminDelete/:id',adminDelete);
 }

@@ -12,7 +12,7 @@ exports.adminLogin = async (req, res) => {
         if (username == null || password == null) {
             return sendResponse(res, 400, 'Username and Password are required');
         }
-        
+
         if (!validator.isEmail(username)) {
             return sendResponse(res, 400, 'Invalid email format');
         }
@@ -27,7 +27,7 @@ exports.adminLogin = async (req, res) => {
         }
         //generate JWT token
         const token = jwt.sign({ id: admin.id, username: admin.username, email: admin.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
-        
+
         //send response with admin details
         admin = {
             admin_id: admin.admin_id,
@@ -53,9 +53,9 @@ exports.adminForgot = async (req, res) => {
         if (!validator.isEmail(username)) {
             return sendResponse(res, 400, 'Invalid email format');
         }
-        
+
         //find the admin in database
-        const admin = await Admin.findOne({ where: { email: username} });
+        const admin = await Admin.findOne({ where: { email: username } });
         if (!username) {
             return sendResponse(res, 400, 'Admin not found');
         }
@@ -81,11 +81,11 @@ exports.adminReset = async (req, res) => {
         if (!newPassword) {
             return sendResponse(res, 400, 'password  is required');
         }
-         // Verify the token
-         let tokenVerify;
-         try {
+        // Verify the token
+        let tokenVerify;
+        try {
             tokenVerify = jwt.verify(token, process.env.JWT_SECRET);
-         } catch (err) {
+        } catch (err) {
             console.error('Token verification failed:', err);  // Log error
             return sendResponse(res, 400, 'Invalid Token');
         }
@@ -112,7 +112,7 @@ exports.adminReset = async (req, res) => {
 exports.adminRegister = async (req, res) => {
     try {
         const { id, roleId, username, email, phoneNumber } = req.body;
-        
+
         if (!roleId || !username || !email || !phoneNumber) {
             return sendResponse(res, 400, 'All Fields Are Required');
         }
@@ -124,7 +124,7 @@ exports.adminRegister = async (req, res) => {
         }
 
         let adminData;
-        
+
         if (id) {
             // If id exists, update the existing admin
             const adminToUpdate = await Admin.findOne({ where: { id } });
@@ -161,40 +161,80 @@ exports.adminRegister = async (req, res) => {
 };
 
 exports.adminList = async (req, res) => {
+
     try {
-        const admin = await Admin.findAll({
-            attributes: {
-                exclude: ['password']
-            },
-            include: [
-                {
-                    model: Role,
-                    attributes: ['rolename'],
-                    as: 'role'
-                }
-            ]
+        console.log(req)
+        let page = 0;
+        let limit = 0;
+        if (req.body.pagination.page > 0) {
+            page = Number.parseInt(req.body.pagination.page - 1);
+        }
+        if (req.body.pagination.limit) {
+            limit = Number.parseInt(req.body.pagination.limit);
+        }
+        let totalPages = 0;
+        let totalRecords;
+        let admin = [];
+        admin = await Admin.findAndCountAll({
+            limit: limit,
+            offset: page * limit,
         });
-        return sendResponse(res, 200, 'Admin List Fetch Successfully', { list: admin });
+
+        //Generate random color
+
+        if (admin?.rows?.length > 0) {
+            totalRecords = admin.count;
+            totalPages = Math.ceil(totalRecords / limit);
+            admin = admin.rows;
+        } else {
+            admin = admin;
+        }
+
+        return sendResponse(res, 200, 'Admin List Fetch successfully', {
+            list: admin, totalPages: totalPages,
+            currentPage: page,
+            totalRecords: totalRecords,
+        });
+    }
+
+    catch (err) {
+        console.log('error'.err);
+        return sendResponse(res, 500, 'Server Error', null, err);
+    }
+    //     try {
+    //         const admin = await Admin.findAll({
+    //             attributes: {
+    //                 exclude: ['password']
+    //             },
+    //             include: [
+    //                 {
+    //                     model: Role,
+    //                     attributes: ['rolename'],
+    //                     as: 'role'
+    //                 }
+    //             ]
+    //         });
+    //         return sendResponse(res, 200, 'Admin List Fetch Successfully', { list: admin });
+    //     }
+    //     catch (err) {
+    //         console.log('error', err);
+    //         return sendResponse(res, 500, 'Server Error', err);
+
+    //     }
+}
+exports.adminDelete = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const admin = await Admin.findOne({ where: { id } });
+        if (!admin) {
+            return sendResponse(res, 400, 'Admin not found');
+        }
+        await admin.destroy();
+        return sendResponse(res, 200, 'Admin deleted Successfully');
     }
     catch (err) {
         console.log('error', err);
-        return sendResponse(res, 500, 'Server Error', err);
-
-    }
-}
-exports.adminDelete = async(req,res)=>{
-    try{
-       const {id} = req.params;
-       const admin = await Admin.findOne({where:{id}});
-       if(!admin){
-          return sendResponse(res,400,'Admin not found');
-       }
-       await admin.destroy();
-       return sendResponse(res,200,'Admin deleted Successfully');
-    }
-    catch(err){
-        console.log('error',err);
-        return sendResponse(res,500,'Server Error',null,err);
+        return sendResponse(res, 500, 'Server Error', null, err);
 
     }
 }

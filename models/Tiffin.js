@@ -45,7 +45,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       get() {
         const rawValue = this.getDataValue('imageURL');
-        return rawValue ? process.env.API_BASEURL + '/' + rawValue : "";
+        return rawValue ? process.env.API_BASEURL + '/uploads/' + rawValue : "";
       }
     },
     isActive: {

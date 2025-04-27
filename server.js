@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const appRouter = require('./app-routes')
+const path = require('path');
 // app.use(express.json()); 
 // app.use(express.urlencoded({ extended: true })); 
 
@@ -15,7 +16,7 @@ app.use(cors({
 }));
 appRouter.appRoutes(app);
 
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 sequelize.sync()
 .then(()=>{
    console.log('Database Connected Successfully');

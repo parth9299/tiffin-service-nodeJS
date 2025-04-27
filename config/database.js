@@ -12,5 +12,5 @@ sequelize.authenticate().then(() => {
     .catch((err) => {
         console.log('Unable to connect to the server', err);
     });
-
+    
 module.exports = sequelize;

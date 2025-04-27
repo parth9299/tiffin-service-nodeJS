@@ -29,15 +29,15 @@ exports.addTiffin = async (req, res) => {
 
             const fileExt = path.extname(uploadedFile.originalFilename);
             let baseName = path.basename(uploadedFile.originalFilename, fileExt);
-            
+
             // Replace spaces with hyphens
             baseName = baseName.replace(/\s+/g, '-');
-            
+
             const uniqueFileName = `${baseName}-${Date.now()}${fileExt}`;
-            
+
             const oldPath = uploadedFile.filepath;
             const newPath = path.join(UPLOAD_DIR, uniqueFileName);
-            
+
 
             fs.rename(oldPath, newPath, async (err) => {
                 if (err) {
@@ -47,23 +47,23 @@ exports.addTiffin = async (req, res) => {
                 const tiffinType = fields.tiffinType?.[0] || '';
                 const tiffinSize = fields.tiffinSize?.[0] || '';
                 const price = fields.price?.[0] || '';
-                const availabilityStatus =  'In Stock';
+                const availabilityStatus = 'In Stock';
                 const description = fields.description?.[0] || '';
 
-                if (!tiffinName || !tiffinType || !tiffinSize || !price || !availabilityStatus || !description ) {
+                if (!tiffinName || !tiffinType || !tiffinSize || !price || !availabilityStatus || !description) {
                     return sendResponse(res, 400, 'All Fields are required');
                 }
-                
+
                 const validTypes = ['Breakfast', 'Lunch', 'Dinner']
                 if (!validTypes.includes(tiffinType)) {
                     return sendResponse(res, 400, 'Validtypes only BreakFast, Lunch and Dinner');
                 }
-                
+
                 const validSizes = ['Small', 'Medium', 'Large']
                 if (!validSizes.includes(tiffinSize)) {
                     return sendResponse(res, 400, 'Valid sizes only Small, Medium, and Large');
                 }
-                
+
                 const newTiffin = await Tiffin.create({
                     tiffinName,
                     tiffinType,
@@ -111,7 +111,7 @@ exports.editTiffin = async (req, res) => {
                 return sendResponse(res, 400, 'Tiffin Not Found');
             }
 
-            let newImage = getImageNameFromURL(tiffin.imageURL);  
+            let newImage = getImageNameFromURL(tiffin.imageURL);
 
             // If an image is uploaded, process the file
             if (files.imageURL && files.imageURL[0]) {
@@ -138,7 +138,7 @@ exports.editTiffin = async (req, res) => {
                 tiffinSize,
                 price,
                 description,
-                imageURL: newImage, 
+                imageURL: newImage,
             });
 
             return sendResponse(res, 200, 'Tiffin Updated Successfully');
@@ -151,7 +151,7 @@ exports.editTiffin = async (req, res) => {
 
 // exports.editTiffin = async (req, res) => {
 //     try {
-        
+
 //         const { id } = req.params;
 //         const { tiffinName, tiffinType, tiffinSize, price, availabilityStatus, description } = req.body;
 //         if (!tiffinName || !tiffinType || !tiffinSize || !price  || !description ) {
@@ -194,8 +194,39 @@ exports.deleteTiffin = async (req, res) => {
 }
 exports.listTiffin = async (req, res) => {
     try {
-        const tiffin = await Tiffin.findAll();
-        return sendResponse(res, 200, 'Tiffin List Fetch successfully', { list: tiffin });
+        console.log(req)
+
+        // let req = req.body
+        let page = 0;
+        let limit = 0;
+        if (req.body.pagination.page > 0) {
+            page = Number.parseInt(req.body.pagination.page - 1);
+        }
+        if (req.body.pagination.limit) {
+            limit = Number.parseInt(req.body.pagination.limit);
+        }
+        let totalPages = 0;
+        let totalRecords = 0;
+        let tiffin = [];
+        tiffin = await Tiffin.findAndCountAll({
+            limit: limit,
+            offset: page * limit,
+        });
+
+        //Generate random color
+        if (tiffin?.rows?.length > 0) {
+            totalRecords = tiffin.count;
+            totalPages = Math.ceil(totalRecords / limit);
+            tiffin = tiffin.rows;
+        } else {
+            tiffin = tiffin;
+        }
+
+        return sendResponse(res, 200, 'Tiffin List Fetch successfully', {
+            list: tiffin, totalPages: totalPages,
+            currentPage: page,
+            totalRecords: totalRecords,
+        });
     }
     catch (err) {
         console.log('error', err);

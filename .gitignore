@@ -5,3 +5,5 @@ config/database.js
 /config
 .env
 .env
+config/database.js
+config/config.json

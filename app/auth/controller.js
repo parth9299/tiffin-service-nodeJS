@@ -163,7 +163,7 @@ exports.adminRegister = async (req, res) => {
 exports.adminList = async (req, res) => {
 
     try {
-        console.log(req)
+        console.log(req.body)
         let page = 0;
         let limit = 0;
         if (req.body.pagination.page > 0) {
@@ -175,7 +175,17 @@ exports.adminList = async (req, res) => {
         let totalPages = 0;
         let totalRecords;
         let admin = [];
-        admin = await Admin.findAndCountAll({
+        admin = await Admin.findAndCountAll({ 
+             attributes: {
+            exclude: ['password']
+        },
+        include: [
+            {
+                model: Role,
+                attributes: ['rolename'],
+                as: 'role'
+            }
+        ],
             limit: limit,
             offset: page * limit,
         });

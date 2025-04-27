@@ -111,39 +111,57 @@ exports.adminReset = async (req, res) => {
 }
 exports.adminRegister = async (req, res) => {
     try {
-        const { roleId, userName, email, phoneNumber } = req.body;
-        if (!roleId || !userName || !email || !phoneNumber) {
+        const { id, roleId, username, email, phoneNumber } = req.body;
+        
+        if (!roleId || !username || !email || !phoneNumber) {
             return sendResponse(res, 400, 'All Fields Are Required');
         }
 
-        const alreadyRegisterd = await Admin.findOne({ where: { email } });
-        if (alreadyRegisterd) {
-            return sendResponse(res, 400, 'This Email is Already Registerd');
+        // Check if the email already exists, but allow update if it's the same email for the same user
+        const existingAdmin = await Admin.findOne({ where: { email } });
+        if (existingAdmin && existingAdmin.id !== id) {
+            return sendResponse(res, 400, 'This Email is Already Registered');
         }
 
-        let createAdmin = await Admin.create({
-            roleId,
-            username: userName,
-            email,
-            phoneNumber,
-            createdBy: 1
-        });
+        let adminData;
         
-        let resetToken = jwt.sign({ username: createAdmin.email }, process.env.JWT_SECRET, { expiresIn: '15m' })
-        console.log('Token', resetToken);
-        await sendEmail(email, 'Reset Password riya', resetToken);
-        return sendResponse(res, 200, 'Registartion Successfully Done!!', createAdmin);
+        if (id) {
+            // If id exists, update the existing admin
+            const adminToUpdate = await Admin.findOne({ where: { id } });
+            if (!adminToUpdate) {
+                return sendResponse(res, 400, 'Admin not found');
+            }
+            adminData = await adminToUpdate.update({
+                roleId,
+                username,
+                email,
+                phoneNumber
+            });
+            return sendResponse(res, 200, 'Admin updated successfully', adminData);
+        } else {
+            // If no id exists, create a new admin
+            adminData = await Admin.create({
+                roleId,
+                username,
+                email,
+                phoneNumber,
+                createdBy: 1
+            });
 
-    }
-    catch (err) {
+            // Generate reset token for the newly created admin
+            let resetToken = jwt.sign({ username: adminData.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
+            console.log('Token', resetToken);
+            await sendEmail(email, 'Reset Password Link', resetToken);
+            return sendResponse(res, 200, 'Registration Successfully Done!!', adminData);
+        }
+    } catch (err) {
         console.log('error', err);
         return sendResponse(res, 500, 'Server Error', err);
     }
-}
+};
 
 exports.adminList = async (req, res) => {
     try {
-        console.log(req, "reqreq")
         const admin = await Admin.findAll({
             attributes: {
                 exclude: ['password']

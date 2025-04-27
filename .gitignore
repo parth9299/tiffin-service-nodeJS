@@ -2,3 +2,6 @@
 /uploads
 config/database.js
 .env
+/config
+.env
+.env

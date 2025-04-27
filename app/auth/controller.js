@@ -4,6 +4,7 @@ const validator = require('validator');
 const { sendResponse } = require('../../helper/responsehelper.js');
 const { Admin, Role } = require('../../models/index.js');
 const { sendEmail } = require('../../helper/mailer.js');
+const { Op } = require('sequelize');
 
 exports.adminLogin = async (req, res) => {
     try {
@@ -163,7 +164,7 @@ exports.adminRegister = async (req, res) => {
 exports.adminList = async (req, res) => {
 
     try {
-        console.log(req.body)
+        console.log(req.body.searchText)
         let page = 0;
         let limit = 0;
         if (req.body.pagination.page > 0) {
@@ -172,24 +173,38 @@ exports.adminList = async (req, res) => {
         if (req.body.pagination.limit) {
             limit = Number.parseInt(req.body.pagination.limit);
         }
+
+        let whereCondition = {};
+
+        if (req.body.searchText) {
+            const searchValues = Array.isArray(req.body.searchText)
+                ? req.body.searchText
+                : [req.body.searchText];
+
+            whereCondition = {
+                [Op.or]: [
+                    { username: { [Op.in]: searchValues } },
+                    { email: { [Op.in]: searchValues } },
+                    { phoneNumber:{[Op.in]: searchValues }},
+                ]
+            };
+        }
         let totalPages = 0;
         let totalRecords;
-        let admin = [];
-        admin = await Admin.findAndCountAll({ 
-             attributes: {
-            exclude: ['password']
-        },
-        include: [
-            {
+
+
+        let admin = await Admin.findAndCountAll({
+            where: whereCondition,
+            attributes: { exclude: ['password'] },
+            include: [{
                 model: Role,
                 attributes: ['rolename'],
                 as: 'role'
-            }
-        ],
+            }],
             limit: limit,
-            offset: page * limit,
+            offset: page * limit
         });
-
+        console.log(admin, "111")
         //Generate random color
 
         if (admin?.rows?.length > 0) {
@@ -232,6 +247,7 @@ exports.adminList = async (req, res) => {
 
     //     }
 }
+
 exports.adminDelete = async (req, res) => {
     try {
         const { id } = req.params;

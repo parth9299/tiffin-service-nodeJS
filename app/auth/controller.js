@@ -210,8 +210,6 @@ exports.adminList = async (req, res) => {
             limit: limit,
             offset: page * limit
         });
-        console.log(admin, "111")
-        //Generate random color
 
         if (admin?.rows?.length > 0) {
             totalRecords = admin.count;

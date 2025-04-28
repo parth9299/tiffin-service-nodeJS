@@ -1,54 +1,90 @@
+const Razorpay = require('razorpay');
 const { sendResponse } = require('../../helper/responsehelper.js');
-const { Order, User, Tiffin } = require('../../models/index.js');
+const { Order, OrderItem, User, Cart, Tiffin } = require('../../models/index.js');
 
+const razorpayInstance = new Razorpay({
+  key_id: "rzp_test_gEREBntUWy5mmQ",
+  key_secret: "vhLJ0LxwyHPdPOFR9ORmvKbJ",
+});
 exports.createOrder = async (req, res) => {
   try {
-    const { user_id } = req.body;
-    if (!user_id) {
+    console.log(req.body, "req.body")
+    const { totalPrice, userId, address } = req.body;
+    if (!userId) {
       return sendResponse(res, 400, 'User id is required');
     }
-    const { tiffin_id } = req.body;
-    if (!tiffin_id) {
-      return sendResponse(req, 400, 'Tiffin is is required');
-    }
-    const { quantity } = req.body;
-    if (!quantity) {
-      return sendResponse(res, 400, 'Quantity is required');
-    }
-    const { address } = req.body;
+
     if (!address) {
       return sendResponse(res, 400, 'Address is required');
     }
-    const { totalPrice } = req.body;
     if (!totalPrice) {
       return sendResponse(res, 400, 'Total Price is required');
     }
-    console.log('req.body', req.body);
-    //find user_id and tiffin_id
-    const userExist = await User.findByPk(user_id); x
-    if (!userExist) {
-      return sendResponse(res, 400, 'User id not found');
-    }
-    const tiffinExist = await Tiffin.findByPk(tiffin_id);
-    if (!tiffinExist) {
-      return sendResponse(res, 400, 'Tiffin id is required');
-    }
-    if (quantity < 1 || quantity > 10) {
-      return sendResponse(res, 400, 'Quantity must be between 1 to 10');
-    }
-    // create order
-    const createOrder = await Order.create({
-      user_id,
-      tiffin_id,
-      quantity,
-      address,
-      totalPrice,
-      createdBy: user_id,
-      createdAt: new Date()
+
+    // Fetch user and cart details
+    const user = await User.findByPk(userId);
+    const cart = await Cart.findAll({
+      where: { user_id: userId },
+      raw: true
     });
 
-    return sendResponse(res, 200, 'Your order has been created successfully!!', createOrder);
+    if (!user) {
+      return sendResponse(res, 400, "User not found");
+    }
+    if (!cart) {
+      return sendResponse(res, 400, "Cart not found");
+    }
 
+
+    // Create order in the database
+    const order = await Order.create({
+      userId: userId,
+      address,
+      totalPrice,
+      status: "created",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    console.log(cart, "cartcart")
+    // Now, add the items in the order_items table
+    const orderItems = [];
+    for (const item of cart) {
+      console.log(item, "itemitemitem")
+      const tiffin = await Tiffin.findByPk(item.tiffin_id);
+      if (!tiffin) {
+        return sendResponse(res, 400, `Tiffin with ID ${item.tiffin_id} not found`);
+      }
+
+      orderItems.push({
+        order_id: order.id,
+        tiffin_id: item.tiffin_id,
+        quantity: item.quantity,
+        price: tiffin.price,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    // Insert all items into the order_items table
+    await OrderItem.bulkCreate(orderItems);
+
+    // Create Razorpay order
+    const razorpayOrder = await razorpayInstance.orders.create({
+      amount: totalPrice * 100,  // Razorpay expects the amount in paise
+      currency: "INR",
+      receipt: `order_${Math.floor(Math.random() * 1000000)}`,
+    });
+console.log(razorpayOrder,"razorpayOrder")
+    // Update the order with Razorpay order ID
+    order.razorpayOrderId = razorpayOrder.id;
+    await order.save();
+
+
+    return sendResponse(res, 200, "Order created successfully", {
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+    });
   }
   catch (err) {
     console.log('error', err);
@@ -156,5 +192,30 @@ exports.updateOrder = async (req, res) => {
     console.log('error', err);
     return sendResponse(res, 500, 'Server Error', null, err);
 
+  }
+}
+exports.paymentSuccess = async (req, res) => {
+  try {
+    const { razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+
+    // Find the order by Razorpay orderId
+    const existingOrder = await Order.findOne({
+      where: { razorpayOrderId: razorpayOrderId }
+    });
+
+    if (!existingOrder) {
+      return sendResponse(res,404, "Order not found");
+    }
+
+    // Update the order with payment info
+    existingOrder.payment_status = "Paid";
+    existingOrder.razorpayPaymentId = razorpayPaymentId;
+    existingOrder.razorpaySignature = razorpaySignature;
+
+    await existingOrder.save();
+
+    return sendResponse(res,200, "Order updated successfully");
+  } catch (error) {
+    return sendResponse(res,500,  "Something went wrong",error);
   }
 }

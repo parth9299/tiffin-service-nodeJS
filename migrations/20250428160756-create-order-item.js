@@ -2,46 +2,39 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('order', {
+    await queryInterface.createTable('order_items', {
       id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         primaryKey: true,
         autoIncrement: true,
       },
-      user_id: {
+      order_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'user', 
+          model: 'order',
           key: 'id',
         },
         onDelete: 'CASCADE',
       },
-      address: {
-        type: Sequelize.TEXT,
+      tiffin_id: {
+        type: Sequelize.INTEGER,
         allowNull: false,
+        references: {
+          model: 'tiffin',
+          key: 'id',
+        },
+        onDelete: 'CASCADE',
       },
-      totalPrice: {
-        type: Sequelize.DECIMAL(10, 2),
+      quantity: {
+        type: Sequelize.INTEGER,
         allowNull: false,
+        defaultValue: 1,
       },
-      status: {
-        type: Sequelize.STRING,
+      price: {
+        type: Sequelize.DECIMAL(10, 2),  // Price for each tiffin in the order
         allowNull: false,
-        defaultValue: 'created',  // Status of the order, e.g., 'created', 'paid', 'shipped'
-      },
-      razorpay_order_id: {
-        type: Sequelize.STRING,
-        allowNull: true,  
-      },
-      razorpay_payment_id: {
-        type: Sequelize.STRING,
-        allowNull: true, 
-      },
-      razorpay_signature: {
-        type: Sequelize.STRING,
-        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -57,6 +50,6 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('order');
+    await queryInterface.dropTable('order_items');
   },
 };

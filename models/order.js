@@ -1,22 +1,18 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class Order extends Model {
     static associate(models) {
       Order.belongsTo(models.User, {
-        foreignKey: 'user_id',
+        foreignKey: 'userId',
+        targetKey: 'id',
         onDelete: 'CASCADE',
-        onUpdate: 'CASCADE'
-      });
-      Order.belongsTo(models.Tiffin, {
-        foreignKey: 'tiffin_id',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE'
+        onUpdate: 'CASCADE',
       });
     }
   }
+
   Order.init({
     id: {
       type: DataTypes.INTEGER,
@@ -24,66 +20,57 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true,
       allowNull: false,
     },
-    // userId:{
-    //   field:'user_id',
-    //   type:DataTypes.INTEGER,
-    // },
-    // tiffinId:{
-    //   field:'tiffin_id',
-    //   type:DataTypes.INTEGER,
-    // },
-    quantity: {
+    userId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'user_id',
     },
     address: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
     totalPrice: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'created',
+    },
+    razorpayOrderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'razorpay_order_id',
+    },
+    razorpayPaymentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'razorpay_payment_id',
+    },
+    razorpaySignature: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'razorpay_signature',
     },
     createdAt: {
-      field:'orderDate',
       type: DataTypes.DATE,
-      defaultValue :sequelize.literal('CURRENT_TIMESTAMP'),
       allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'createdAt',
     },
-    updatedAt:{
+    updatedAt: {
       type: DataTypes.DATE,
-      defaultValue :sequelize.literal('CURRENT_TIMESTAMP'),
-      allowNull: true,
-    },
-    orderStatus: {
-      type: DataTypes.ENUM('Pending', 'Completed', 'Cancelled'),
-      defaultValue: 'Pending',
       allowNull: false,
-    },
-    paymentStatus: {
-      type: DataTypes.ENUM('Paid', 'Unpaid'),
-      defaultValue: 'Unpaid',
-      allowNull: false,
-    },
-    deliveryDate: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    createdBy: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-    },
-    updatedBy: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-    },
+      defaultValue: DataTypes.NOW,
+      field: 'updatedAt',
+    }
+  }, {
+    sequelize,
+    modelName: 'Order',
+    tableName: 'order',
+    timestamps: true,
+  });
 
-  },
-
-    {
-      sequelize,
-      modelName: 'Order',
-      tableName: 'order'
-    });
   return Order;
 };

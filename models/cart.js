@@ -32,11 +32,12 @@ module.exports = (sequelize, DataTypes) => {
       type:DataTypes.INTEGER,
       allowNull: false,
      },
-     price:{
-      type:DataTypes.INTEGER,
-      allowNull: false,
-     },
      totalPrice:{
+      type:DataTypes.INTEGER,
+      allowNull:false,
+     }, 
+     tiffinId:{
+      field:"tiffin_id",
       type:DataTypes.INTEGER,
       allowNull:false,
      },

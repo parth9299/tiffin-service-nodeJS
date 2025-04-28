@@ -58,9 +58,9 @@ exports.userLogin = async (req, res) => {
         if (!user) {
             return sendResponse(res, 400, 'User not found');
         }
-        console.log(password, user.password, "password, user.password")
+        
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log(isMatch, "isMatchisMatch")
+      
         if (!isMatch) {
             return sendResponse(res, 400, 'Invalid Credentials');
         }
@@ -68,7 +68,7 @@ exports.userLogin = async (req, res) => {
         const token = jwt.sign({ id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
         user = {
-            id: user.user_id,
+            id: user.id,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,

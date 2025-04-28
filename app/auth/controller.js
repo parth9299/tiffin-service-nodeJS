@@ -5,6 +5,7 @@ const { sendResponse } = require('../../helper/responsehelper.js');
 const { Admin, Role } = require('../../models/index.js');
 const { sendEmail } = require('../../helper/mailer.js');
 const { Op } = require('sequelize');
+const { generateResetPasswordEmail } = require('../../helper/emailTemplate.js');
 
 exports.adminLogin = async (req, res) => {
     try {
@@ -56,16 +57,18 @@ exports.adminForgot = async (req, res) => {
         }
 
         //find the admin in database
-        const admin = await Admin.findOne({ where: { email: username } });
+        const admin = await Admin.findOne({ where: { email: username }, raw:true });
+        console.log(admin.username, "adminadminadmin")
         if (!username) {
             return sendResponse(res, 400, 'Admin not found');
         }
         //Generate jwt token for password reset
 
-        let resetToken = jwt.sign({ email: admin.email }, process.env.JWT_SECRET, { expiresIn: '15m' })
+        let resetToken = jwt.sign({ username: username }, process.env.JWT_SECRET, { expiresIn: '15m' });
         console.log('Token', resetToken);
-
-        return sendResponse(res, 200, 'Password reset link', { resetToken });
+        const htmlTemplate = generateResetPasswordEmail(admin.username, `http://localhost:3000/reset/${resetToken}`)
+        await sendEmail(admin.email, 'Reset Password ', htmlTemplate);
+        return sendResponse(res, 200, 'Password reset link',);
 
     }
     catch (err) {
@@ -90,7 +93,8 @@ exports.adminReset = async (req, res) => {
             console.error('Token verification failed:', err);  // Log error
             return sendResponse(res, 400, 'Invalid Token');
         }
-        const admin = await Admin.findOne({ where: { email: tokenVerify.email } });
+        console.log(tokenVerify, "tokenVerify")
+        const admin = await Admin.findOne({ where: { email: tokenVerify.username } });
         if (!admin) {
             return sendResponse(res, 400, 'Admin not found');
         }
@@ -151,8 +155,8 @@ exports.adminRegister = async (req, res) => {
 
             // Generate reset token for the newly created admin
             let resetToken = jwt.sign({ username: adminData.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
-            console.log('Token', resetToken);
-            await sendEmail(email, 'Reset Password Link', resetToken);
+            const htmlTemplate = generateResetPasswordEmail(username, `http://localhost:3000/reset/${resetToken}`)
+            await sendEmail(email, 'Reset Password Link', htmlTemplate);
             return sendResponse(res, 200, 'Registration Successfully Done!!', adminData);
         }
     } catch (err) {
@@ -191,16 +195,18 @@ exports.adminList = async (req, res) => {
         }
         let totalPages = 0;
         let totalRecords;
-
-
-        let admin = await Admin.findAndCountAll({
-            where: whereCondition,
-            attributes: { exclude: ['password'] },
-            include: [{
-                model: Role,
-                attributes: ['rolename'],
-                as: 'role'
-            }],
+        let admin = [];
+        admin = await Admin.findAndCountAll({
+            attributes: {
+                exclude: ['password']
+            },
+            include: [
+                {
+                    model: Role,
+                    attributes: ['rolename'],
+                    as: 'role'
+                }
+            ],
             limit: limit,
             offset: page * limit
         });

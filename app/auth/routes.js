@@ -8,4 +8,4 @@ exports.routes = (router) => {
     router.post('/adminRegister',adminRegister);
     router.post('/adminList',adminList);
     router.post('/adminDelete/:id',adminDelete);
-}
+}   

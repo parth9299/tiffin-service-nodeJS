@@ -194,9 +194,7 @@ exports.deleteTiffin = async (req, res) => {
 }
 exports.listTiffin = async (req, res) => {
     try {
-        console.log(req)
 
-        // let req = req.body
         let page = 0;
         let limit = 0;
         if (req.body.pagination.page > 0) {
@@ -233,6 +231,28 @@ exports.listTiffin = async (req, res) => {
         return sendResponse(res, 500, 'Server Error', null, err);
     }
 }
+
+exports.tiffins = async (req, res) => {
+    try {
+        const { type } = req.body;
+        let tiffin;
+        if (type) {
+            tiffin = await Tiffin.findAll({
+                where: { tiffinType: type }
+            });
+        } else {
+            tiffin = await Tiffin.findAll();
+        }
+        return sendResponse(res, 200, 'Tiffin List fetched successfully', {
+            list: tiffin,
+        });
+    }
+    catch (err) {
+        console.log('error', err);
+        return sendResponse(res, 500, 'Server Error', null, err);
+    }
+}
+
 exports.temporaryUnavailable = async (req, res) => {
     try {
         const { id, temporaryUnavailable } = req.body;

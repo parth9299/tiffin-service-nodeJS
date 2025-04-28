@@ -13,7 +13,7 @@ dotenv.config();
     if (!to_email || !mail_subject || !mail_message) {
         return false;
     }
-    console.log(process.env.MAIL_HOST, "to_email")
+    console.log(to_email, "to_email")
     const payload = {
         name: process.env.MAIL_HOST,
         host: process.env.MAIL_HOST,

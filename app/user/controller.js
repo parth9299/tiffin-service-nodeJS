@@ -1,15 +1,16 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const validator =  require('validator');
+const validator = require('validator');
 const { sendResponse } = require('../../helper/responsehelper.js');
 const { User } = require('../../models/index.js');
-const { setDefaultHighWaterMark } = require('nodemailer/lib/xoauth2/index.js');
-
+const { generateRandomPassword } = require('./../../helper/genralHelper.js');
+const { sendEmail } = require('../../helper/mailer.js');
+const { generateDefaultPasswordEmail, generateResetPasswordEmail } = require('../../helper/emailTemplate.js');
 exports.userRegister = async (req, res) => {
     try {
-        let { firstName, lastName, email, phone_number, address } = req.body;
-        if (!firstName || !lastName || !email || !phone_number || !address) {
+        let { firstName, lastName, email, mobile, address } = req.body;
+        if (!firstName || !lastName || !email || !mobile || !address) {
             return sendResponse(res, 400, 'All Fields are required');
         }
         if (!validator.isEmail(email)) {
@@ -21,19 +22,22 @@ exports.userRegister = async (req, res) => {
         if (alreadyRegisterd) {
             return sendResponse(res, 400, 'Email is already registerd');
         }
+        let password = generateRandomPassword(16)
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(password, 10);
         //creating new user
         let createUser = await User.create({
             firstName,
             lastName,
             email,
-            phone_number,
-            address
+            phone_number: mobile,
+            address,
+            password: hashedPassword
         });
-        const token = jwt.sign({ id: createUser.id, email: createUser.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        console.log('Token', token)
 
-
-        return sendResponse(res, 200, 'Registration Successfully!!', { token });
+        const htmlTemplate = generateDefaultPasswordEmail(`${firstName} ${lastName}`, password, `http://localhost:3000`)
+        await sendEmail(email, 'Defult password', htmlTemplate);
+        return sendResponse(res, 200, 'Registration Successfully!!',);
     }
     catch (err) {
         console.log('error', err);
@@ -54,18 +58,21 @@ exports.userLogin = async (req, res) => {
         if (!user) {
             return sendResponse(res, 400, 'User not found');
         }
+        console.log(password, user.password, "password, user.password")
         const isMatch = await bcrypt.compare(password, user.password);
+        console.log(isMatch, "isMatchisMatch")
         if (!isMatch) {
             return sendResponse(res, 400, 'Invalid Credentials');
         }
         // generate JWT token
         const token = jwt.sign({ id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
-        console.log('token', token);
+
         user = {
             id: user.user_id,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
+            token:token
         }
         return sendResponse(res, 200, 'Login Successfully', user)
     }
@@ -90,11 +97,10 @@ exports.userForgot = async (req, res) => {
             return sendResponse(res, 400, 'User not found');
         }
         let resetToken = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
-        console.log('Token', resetToken);
-
-        //create reset password URL
-         
-        return sendResponse(res, 200, 'Password reset link', { resetToken });
+        const htmlTemplate = generateResetPasswordEmail(`${user.firstName} ${user.lastName}`, `http://localhost:3000/res/${resetToken}`)
+        await sendEmail(user.email, 'Reset Password ', htmlTemplate);
+        //create reset password URL 
+        return sendResponse(res, 200, 'Password reset link',);
     }
     catch (err) {
         console.log('error', err);
@@ -128,7 +134,7 @@ exports.userReset = async (req, res) => {
 
         // Update the user's password
         user.password = hashedPassword;
-        await user.save(); 
+        await user.save();
 
         return sendResponse(res, 200, 'Password reset successfully');
     }

@@ -6,5 +6,5 @@ exports.routes = (router) => {
     router.post('/userLogin', userLogin);
     router.post('/userForgot', userForgot);
     router.post('/userReset', userReset);
-    router.get('/userList', userList);
+    router.post('/userList', userList);
 }
